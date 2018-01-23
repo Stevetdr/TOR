@@ -1,0 +1,29 @@
+
+
+- Si crea sotto GIT_REPO copia della directory da salvare su GIT
+  per esempio GIT_REPO
+                 +--- pippo
+-  poi si copia tutto il contenuto del pippo da salvare in /GIT_REPO/pippo
+
+A questo punto, in /GIT_REPO/pippo si esegue
+1) git init                                     che crea la directory .git
+2) git clone git@github.com:Stevetdr/pippo.git
+3) git add --all
+4) git commit -a -m "commento per tenere traccia del lavoro"
+
+Controllo: si puo' verificare la presenza del collegamento tra noi e GITHUB con
+    - git remote -v
+Se non c'e' nulla, si deve creare con:
+    - git remote add origin git@github.com:Stevetdr/pippo.git
+Se si trova un collegamento errato, si puo' cancellare con
+    - git remote remove origin
+    ricontrollare con git remote -v
+
+A questo punto si deve digitare:
+5) git push -v origin master
+
+Se si riceve un errore perche' non sono allineati il repository e la ns. directory pippo
+ si deve lanciare
+    - git pull origin master    che copia in locale i file remoti e poi partire
+     di nuovo dal ns. punto 3)
+
