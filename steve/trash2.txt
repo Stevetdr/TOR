@@ -1,4 +1,0 @@
-File presenti in  /home/pi/steve/  e --NON-- presenti in  /home/pi/GIT-REPO/steve/
-----------------------------------------------------------
-Files /home/pi/GIT-REPO/steve/programmi_pi/.git/index and /home/pi/steve/programmi_pi/.git/index differ
-Only in /home/pi/steve/programmi_pi/.git/refs: index

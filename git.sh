@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 data=`date '+Salvato il %d-%m-%Y alle %H:%M:%S'`
@@ -32,7 +33,7 @@ echo " ===> Situazione parametri globali: ----------------------- 1"
 echo " "
 echo " ===> Aggiungo eventuali file modificati: ----------------- 2"
 echo " "
-git add --all
+git add *
 echo " ===> Status:  -------------------------------------------- 3"
 echo " "
 git status
