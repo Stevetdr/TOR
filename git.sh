@@ -31,13 +31,13 @@ echo " "
 echo " ===> Situazione parametri globali: ----------------------- 1"
 #git config -l
 echo " "
-echo " ===> Aggiungo eventuali file modificati: ----------------- 2"
+echo " ===> Aggiungo eventuali file modificati: ------git add---- 2"
 echo " "
 git add *
 echo " ===> Status:  -------------------------------------------- 3"
 echo " "
 git status
-echo " ===> Costruisco la commit ... ---------------------------- 4"
+echo " ===> Costruisco la commit ... -----------------git commit- 4"
 echo "        il commento sara': $data"
 echo " "
 git commit -a -m "$data"   #  -a -m
@@ -45,7 +45,7 @@ git status
 echo " ===> Controllo di essere sul master: --------------------- 5"
 echo " "
 git checkout master             # controllo di essere sul master
-echo " ===> Effettuo spostamenti su repo remoto ----------------- 6"
+echo " ===> Effettuo spostamenti su repo remoto ------git push -- 6"
 echo " "
 #git remote add origin git@github.com:Stevetdr/GIT-REPO-p3
 git push -u origin master          # effettuo spostamenti file modificati
