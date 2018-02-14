@@ -1,78 +1,94 @@
-
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+#include <LiquidCrystal_PCF8574.h>
 
-LiquidCrystal_I2C lcd1(0x20,16,2);  // A2 A1 A0 = 0 set the LCD address to 0x38 for a 16 chars and 2 line display
-LiquidCrystal_I2C lcd2(0x38,16,2);  // A2 A1 A0 = 0 set the LCD address to 0x38 for a 16 chars and 2 line display
+LiquidCrystal_PCF8574 lcd(0x27);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
-int i;
-int nRows;
-int ledPin = 13;
-int BYTE;
-uint8_t bell[8] = {0x4,0xe,0xe,0xe,0x1f,0x0,0x4};
-uint8_t note[8] = {0x2,0x3,0x2,0xe,0x1e,0xc,0x0};
-uint8_t clock[8] = {0x0,0xe,0x15,0x17,0x11,0xe,0x0};
-uint8_t heart[8] = {0x0,0xa,0x1f,0x1f,0xe,0x4,0x0};
-uint8_t duck[8] = {0x0,0xc,0x1d,0xf,0xf,0x6,0x0};
-uint8_t check[8] = {0x0,0x1,0x3,0x16,0x1c,0x8,0x0};
-uint8_t cross[8] = {0x0,0x1b,0xe,0x4,0xe,0x1b,0x0};
-uint8_t retarrow[8] = { 0x1,0x1,0x5,0x9,0x1f,0x8,0x4};
+int show;
 
-void setup() {
-    pinMode(ledPin, OUTPUT);
+void setup()
+{
+  int error;
 
-    lcd1.init();                      // initialize the lcd
-    lcd2.init();                      // initialize the lcd
-}
+  Serial.begin(115200);
+  Serial.println("LCD...");
 
+  while (! Serial);
 
-void loop() {
+  Serial.println("Dose: check for LCD");
 
-    lcd1.clear();
-    lcd2.clear();
+  // See http://playground.arduino.cc/Main/I2cScanner
+  Wire.begin();
+  Wire.beginTransmission(0x27);
+  error = Wire.endTransmission();
+  Serial.print("Error: ");
+  Serial.print(error);
 
-    lcd1.setCursor(0,0);
-    lcd1.print("A");
-    lcd2.setCursor(0,0);
-    lcd2.print("A");
-    //lcd1.print("O mia che lavoro");
+  if (error == 0) {
+    Serial.println(": LCD found.");
 
-    digitalWrite(ledPin, HIGH);
-    delay(500);
+  } else {
+    Serial.println(": LCD not found.");
+  } // if
 
-    lcd1.setCursor(0,1);
-    lcd1.print("B");
-    lcd2.setCursor(0,1);
-    lcd2.print("B");
-    //lcd1.print("seconda linea  !");
+  lcd.begin(16, 2); // initialize the lcd
+  show = 0;
+} // setup()
 
-    digitalWrite(ledPin, LOW);
-    delay(2000);
+void loop()
+{
+  if (show == 0) {
+    lcd.setBacklight(255);
+    lcd.home(); lcd.clear();
+    lcd.print("Hello LCD");
+    delay(1000);
 
+    lcd.setBacklight(0);
+    delay(400);
+    lcd.setBacklight(255);
 
-     //======define charset
-/*
+  } else if (show == 1) {
+    lcd.clear();
+    lcd.print("Cursor On");
+    lcd.cursor();
 
-     lcd.createChar(0, bell);
-     lcd.createChar(1, note);
-     lcd.createChar(2, clock);
-     lcd.createChar(3, heart);
-     lcd.createChar(4, duck);
-     lcd.createChar(5, check);
-     lcd.createChar(6, cross);
-     lcd.createChar(7, retarrow);
-     lcd.home();
+  } else if (show == 2) {
+    lcd.clear();
+    lcd.print("Cursor Blink");
+    lcd.blink();
 
-     i = 0;
-     lcd.clear();
-     while (i<nRows) {
-           lcd.setCursor(0,i);
-           lcd.print("user:");
-           for (int j=0; j<7; j++) {
-                 lcd.print(j, BYTE);
-           }
+  } else if (show == 3) {
+    lcd.clear();
+    lcd.print("Cursor OFF");
+    lcd.noBlink();
+    lcd.noCursor();
 
-           i++;
-    }
-*/
-}
+  } else if (show == 4) {
+    lcd.clear();
+    lcd.print("Display Off");
+    lcd.noDisplay();
+
+  } else if (show == 5) {
+    lcd.clear();
+    lcd.print("Display On");
+    lcd.display();
+
+  } else if (show == 7) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("*** first line.");
+    lcd.setCursor(0, 1);
+    lcd.print("*** second line.");
+
+  } else if (show == 8) {
+    lcd.scrollDisplayLeft();
+  } else if (show == 9) {
+    lcd.scrollDisplayLeft();
+  } else if (show == 10) {
+    lcd.scrollDisplayLeft();
+  } else if (show == 11) {
+    lcd.scrollDisplayRight();
+  } // if
+
+  delay(2000);
+  show = (show + 1) % 12;
+} // loop()
