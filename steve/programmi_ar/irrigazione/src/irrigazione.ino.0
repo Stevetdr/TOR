@@ -1,0 +1,352 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include "PCF8574.h"
+#include "DS3232RTC.h"
+#include <string.h>
+//#include "LCD.h" // For LCD
+
+#define DS3231_I2C_ADDRESS      0x68    // i2c 0x68 del DS3231
+#define DS3231_TEMPERATURE_ADDR 0x11    // indirizzo della memoria interna
+
+LiquidCrystal_I2C lcd(0x23,16,2);       // i2c 0x38 LCD 16x2
+PCF8574 tastiera(0x25);                 // i2c 0x25 per gestione tastiera
+
+int Key_Press = 0;          // per tastiera
+uint8_t value = 0;          // per tastiera
+uint8_t value1 = 0;         // per tastiera
+int i;
+int col = 0;
+int linea = 0;
+int lung;                // intero senza segno
+// character from 0 to 7 special to build 5x7 pixel
+uint8_t bell[8]     = {0x04,0x0E,0x0E,0x0E,0x1F,0x00,0x04};
+uint8_t clock[8]    = {0x00,0x0E,0x15,0x17,0x11,0x0E,0x00};
+uint8_t heart[8]    = {0x00,0x0A,0x1F,0x1F,0x0E,0x04,0x00};
+uint8_t check[8]    = {0x00,0x01,0x03,0x16,0x1C,0x08,0x00};
+uint8_t retarrow[8] = {0x01,0x01,0x05,0x09,0x1F,0x08,0x04};
+uint8_t uparrow[8]  = {0x00,0x04,0x0E,0x15,0x04,0x04,0x00};
+uint8_t dnarrow[8]  = {0x00,0x04,0x04,0x15,0x0E,0x04,0x00};
+uint8_t riarrow[8]  = {0x00,0x04,0x02,0x1F,0x02,0x04,0x00};
+
+char testo[] = "Irrigazione V100";
+//-----------------------------------------------------------------------------
+void setup() {
+    Serial.begin(9600);             // apri il canale Seriale per output
+    lcd.init();                     // inizializza  lcd
+
+    //setDS3231time(30,33,18,1,26,02,19); // sec min ore giorno_sett day month year
+    //timeSS(); // solo per un campo
+
+    //======define charset
+    lcd.createChar(0, bell); // Sends the custom char to lcd
+    lcd.createChar(1, clock);
+    lcd.createChar(2, heart);
+    lcd.createChar(3, check);
+    lcd.createChar(4, retarrow);    // freccia return
+    lcd.createChar(5, uparrow);     // freccia in su
+    lcd.createChar(6, dnarrow);     // freccia in giu
+    lcd.createChar(7, riarrow);     // freccia a destra
+
+    WriteString(testo, 0, 0); // serve per vedere la versione
+    delay(1000);
+}
+//-----------------------------------------------------------------------------
+void loop() {                                           // programma principale
+
+    char testo1[]  = "Premi un tasto  ";     // riga 0
+    WriteString(testo1, 0, 0); //
+
+    char orario1[] = "        hh:mm:ss";
+    WriteString(orario1, 0, 1);
+
+    //displayTime();              // display time su seriale : forse da togliere
+    WriteTime(8, 1);            // visualizza sulla line 1 l'ora -> HH:MM:SS
+
+    Key_Press = Read_Keyboard();
+    if (Key_Press != 0) {
+        MenuPrincipale();       // vai al menu principale per le selezioni
+        //Serial.print("premuto il tasto nr.: ");
+        //Serial.println(Key_Press);
+        //displayTime();
+    }
+}
+//-----------------------------------------------------------------------------
+//*****************************************************************************
+//*****************************************************************************
+int Read_Keyboard(void) {           // legge se un tasto e' stato premuto
+
+    value = tastiera.read8();       // legge la tastiera con i2c
+    if (value != 0) {               // esame di quanto letto, se e' stato premuto
+        value1 = value;             // salva il valore
+        delay(300);                 // delay
+    }
+    else { return value; }          // altrimenti value=0, nessun tasto premuto!
+                                    // attesa che il pulsante venga rilasciato
+    value = tastiera.read8();       // rilegge per avere ancora il valore
+    while(value!=0) {               // se diverso da 0, pulsante premuto
+        delay(50);                  // ritardo
+        value = tastiera.read8();   // rilegge
+    }
+    return value1;                  // ritorna il valore premuto
+}
+//-----------------------------------------------------------------------------
+void MenuPrincipale(void) { // loop sulle possibili scelte del menu
+
+    char testo2[] = "Modifica  ora   "; // visualizza CAMBIO ORA --------------
+    WriteString(testo2, 0, 0);
+
+    char testo3[] = "                ";
+    WriteString(testo3, 0, 1);
+    lcd.setCursor(1,1);     // posizione dello skip
+    lcd.print((char)7);     // carattere skip
+    lcd.setCursor(14,1);    // posizione dell' enter
+    lcd.print((char)4);     // carattere enter
+
+    Key_Press = 0;  // reset
+    while (Key_Press == 0) {        // se e' vera esegue le istruzioni dentro le graffe
+        Key_Press = Read_Keyboard();
+    }
+
+    if (Key_Press == 8) {
+        Serial.print("premuto skip1");
+        // andare alla gestione del cambio ora
+    }
+
+    char testo4[] = "Modifica  data  "; // visualizza CAMBIO DATA -------------
+    WriteString(testo4, 0, 0);
+
+    Key_Press = 0;  // reset
+    while (Key_Press == 0) {
+        Key_Press = Read_Keyboard();
+    }
+
+    if (Key_Press == 8) {
+        Serial.print("premuto skip2");
+        // andare alla gestione del cambio ora
+    }
+
+
+}
+    //char orario[] = "Ena/Disa rele'  ";
+    //char orario[] = "Cambia ora pompe";
+    //WriteString(orario, 0, 1);
+
+//-----------------------------------------------------------------------------
+void setDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte
+dayOfMonth, byte month, byte year)
+{
+    // sets time and date data to DS3231
+    Wire.beginTransmission(DS3231_I2C_ADDRESS);
+    Wire.write(0); // set next input to start at the seconds register
+    Wire.write(decToBcd(second)); // set seconds
+    Wire.write(decToBcd(minute)); // set minutes
+    Wire.write(decToBcd(hour)); // set hours
+    Wire.write(decToBcd(dayOfWeek)); // set day of week (1=Sunday, 7=Saturday)
+    Wire.write(decToBcd(dayOfMonth)); // set date (1 to 31)
+    Wire.write(decToBcd(month)); // set month
+    Wire.write(decToBcd(year)); // set year (0 to 99)
+    Wire.endTransmission();
+}
+//---------- per correzione tempo su orologio in un solo campo ----------------
+void timeSS() {
+    Wire.beginTransmission(DS3231_I2C_ADDRESS);
+    Wire.write(3); // set next input to start at the seconds register
+    Wire.write(05); // set
+    Wire.endTransmission();
+}
+//-----------------------------------------------------------------------------
+void readDS3231time(byte *second,byte *minute,byte *hour,byte *dayOfWeek,
+byte *dayOfMonth,byte *month,byte *year) {
+    Wire.beginTransmission(DS3231_I2C_ADDRESS);
+    Wire.write(0); // set DS3231 register pointer to 00h
+    Wire.endTransmission();
+    Wire.requestFrom(DS3231_I2C_ADDRESS, 7); // request seven bytes of data from
+                                             //DS3231 starting from register 00h
+    *second = bcdToDec(Wire.read() & 0x7f);
+    *minute = bcdToDec(Wire.read());
+    *hour = bcdToDec(Wire.read() & 0x3f);
+    *dayOfWeek = bcdToDec(Wire.read());
+    *dayOfMonth = bcdToDec(Wire.read());
+    *month = bcdToDec(Wire.read());
+    *year = bcdToDec(Wire.read());
+}
+//-----------------------------------------------------------------------------
+// Convert normal decimal numbers to binary coded decimal
+byte decToBcd(byte val) { return( (val/10*16) + (val%10) );}
+//-----------------------------------------------------------------------------
+// Convert binary coded decimal to normal decimal numbers
+byte bcdToDec(byte val) { return( (val/16*10) + (val%16) );}
+//-----------------------------------------------------------------------------
+void displayTime() {
+    byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+    // retrieve data from DS3231
+    readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+    // send it to the serial monitor
+    Serial.print(hour, DEC);
+    // convert the byte variable to a decimal number when displayed
+    Serial.print(":");
+    if (minute<10) {
+        Serial.print("0");
+    }
+    Serial.print(minute, DEC);
+    Serial.print(":");
+    if (second<10) {
+        Serial.print("0");
+    }
+    Serial.print(second, DEC);
+    Serial.print(" ");
+    Serial.print(dayOfMonth, DEC);
+    Serial.print("/");
+    Serial.print(month, DEC);
+    Serial.print("/");
+    Serial.print(year, DEC);
+    Serial.print(" Giorno della settimana: ");
+    switch(dayOfWeek){
+        case 1:
+            Serial.println("domenica");
+            break;
+        case 2:
+            Serial.println("lunedi'");
+            break;
+        case 3:
+            Serial.println("martedi'");
+            break;
+        case 4:
+            Serial.println("mercoledi'");
+            break;
+        case 5:
+            Serial.println("giovedi'");
+            break;
+        case 6:
+            Serial.println("venerdi'");
+            break;
+        case 7:
+            Serial.println("sabato");
+            break;
+    }
+}
+//-----------------------------------------------------------------------------
+void WriteString(char testo[], int col, int linea)  {
+    // riceve il testo e la col da cui partire. Linea 0 o 1
+    lung = strlen(testo)-1;   // calcola la lunghezza del testo e sottrae il \0
+    for (i=0; i <= lung; i++) { // loop per scrivere
+        lcd.setCursor(i + col , linea); // posiziona il cursore
+        lcd.print(testo[i]);            // scrive il testo
+    }
+}
+//-----------------------------------------------------------------------------
+void WriteTime(int col, int linea) {
+    // scrive HH:MM:SS alla colonna col e sulla linea 0 o 1
+    byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+    // retrieve data from DS3231
+    readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+// - - - - - - - - - - stampa le ore - - - - - - - - - - -
+    lcd.setCursor(col, linea);
+    if (hour<10) {
+        lcd.print("0");
+        lcd.print(hour);
+    }
+    else {
+        lcd.print(int(hour/10));
+        lcd.print(hour-(int(hour/10)*10));
+    }
+// - - - - - - - - - - stampa i minuti - - - - - - - - - - -
+    lcd.setCursor(col+3, linea);
+    if (minute<10) {
+        lcd.print("0");
+        lcd.print(minute);
+    }
+    else {
+        lcd.print(int(minute/10));
+        lcd.print(minute-(int(minute/10)*10));
+    }
+// - - - - - - - - - - stampa i secondi - - - - - - - - - - -
+    lcd.setCursor(col+6, linea);
+    if (second<10) {
+        lcd.print("0");
+        lcd.print(second);
+    }
+    else {
+        lcd.print(int(second/10));
+        lcd.print(second-(int(second/10)*10));
+    }
+}
+//-----------------------------------------------------------------------------
+
+//=============================================================================
+//=============================================================================
+//=============================================================================
+
+/*
+
+    // send it to the serial monitor
+    if (hour<10) { Serial.print("0"); }
+    Serial.print(hour, DEC);
+
+    // convert the byte variable to a decimal number when displayed
+    Serial.print("-");
+
+    if (minute<10) { Serial.print("0");}
+    Serial.print(minute, DEC);
+
+    Serial.print("-");
+
+    if (second<10) { Serial.print("0");}
+    Serial.println (second,DEC);
+*/
+/*
+    lcd.setCursor(0,1);
+
+    lcd.print((char)0); // Custom char
+    lcd.print((char)1);
+    lcd.print((char)2);
+    lcd.print((char)3);
+    lcd.print((char)4);
+    lcd.print((char)5);
+    lcd.print((char)6);
+    lcd.print((char)7);
+
+*/
+
+
+
+    //Serial.print("rilevato il valore: ");Serial.println(value);
+ // PCF_3B.write8(value);
+
+/*
+switch (value) {
+    case 0x01:  // premuto 1
+    Serial.println("premuto il tasto 1");
+      //PCF_3B.write8(0x01);
+        //for (int i=0; i<7; i++) {PCF_3B.shiftLeft();delay(50);}
+      break;
+    case 0x02:  // premuto 2
+    Serial.println("premuto il tasto 2");
+      //PCF_3B.write8(0x80);
+        //for (int i=0; i<7; i++) {PCF_3B.shiftRight();delay(50);}
+      break;
+    case 0x04:  // premuto 4
+    Serial.println("premuto il tasto 4");
+      //for (int i=0; i<8; i++) {PCF_3B.write(i, 1);delay(50);PCF_3B.write(i, 0);delay(50);}
+      break;
+    case 0x08:  // premuto 8
+    Serial.println("premuto il tasto 8");
+    //for (int i=0; i<8; i++) {PCF_3B.toggle(i);delay(50);PCF_3B.toggle(i);delay(50);}
+      break;
+    default:
+      // if nothing else matches, do the default
+      // default is optional
+    Serial.print("premuto il tasto ");
+    Serial.println(value);
+        //PCF_3B.write8(0x92); delay(80); PCF_3B.write8(0x24); delay(80);PCF_3B.write8(0x49); delay(80);
+    break;
+    //PCF_3B.write8(0x00);
+  }
+
+  delay(500);
+  return value;
+}
+//
+// END OF FILE
+//
+*/

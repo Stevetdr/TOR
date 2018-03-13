@@ -1,0 +1,14 @@
+
+
+
+
+
+.build/uno/src/TFT.cpp : src/TFT.ino
+	@mkdir -p .build/uno/src
+	@echo [93msrc/TFT.ino[0m
+	@/usr/local/bin/ino preproc  -o $@ $^
+
+
+all : .build/uno/src/TFT.cpp
+	@true
+

@@ -1,0 +1,14 @@
+
+
+
+
+
+.build/nano328/src/pcf8574.cpp : src/pcf8574.ino
+	@mkdir -p .build/nano328/src
+	@echo [93msrc/pcf8574.ino[0m
+	@/usr/local/bin/ino preproc  -o $@ $^
+
+
+all : .build/nano328/src/pcf8574.cpp
+	@true
+

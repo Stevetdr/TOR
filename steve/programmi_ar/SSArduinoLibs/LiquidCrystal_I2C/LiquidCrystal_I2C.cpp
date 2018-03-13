@@ -1,4 +1,11 @@
-// Based on the work by DFRobot
+//YWROBOT
+//last updated on 21/12/2011
+//Tim Starling Fix the reset bug (Thanks Tim)
+//wiki doc http://www.dfrobot.com/wiki/index.php?title=I2C/TWI_LCD1602_Module_(SKU:_DFR0063)
+//Support Forum: http://www.dfrobot.com/forum/
+//Compatible with the Arduino IDE 1.0
+//Library version:1.1
+
 
 #include "LiquidCrystal_I2C.h"
 #include <inttypes.h>
@@ -9,7 +16,7 @@
 #define printIIC(args)	Wire.write(args)
 inline size_t LiquidCrystal_I2C::write(uint8_t value) {
 	send(value, Rs);
-	return 1;
+	return 0;
 }
 
 #else
@@ -136,7 +143,7 @@ void LiquidCrystal_I2C::home(){
 
 void LiquidCrystal_I2C::setCursor(uint8_t col, uint8_t row){
 	int row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
-	if ( row > (_numlines-1) ) {
+	if ( row > _numlines ) {
 		row = _numlines-1;    // we count rows starting w/0
 	}
 	command(LCD_SETDDRAMADDR | (col + row_offsets[row]));

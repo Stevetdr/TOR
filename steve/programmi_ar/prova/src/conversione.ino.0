@@ -1,0 +1,56 @@
+//
+//
+float gradi = 0;
+char stringa[15];
+
+void setup() {
+    Serial.begin(9600);
+}
+// ============================================================================
+void loop() {
+    gradi = 32321.011;    // valore da convertire
+    EsameFloat(gradi);
+    //Serial.print("stringa riportata: ");Serial.println(stringa);
+    while(1){}
+}
+// ============================================================================
+void EsameFloat(float gradi) {
+    // attenzione: i valori devono essere da -32000 a +32000 oltre si sballa tutto
+    //  Converte solo 3 decimali
+
+    Serial.print("valore da convertire: ");Serial.println(gradi);
+    String stringVal = "";      // reset della stringa
+    int decimali = getDecimali(gradi);
+    stringVal = String(int(gradi)) + "." + String(decimali); //combining both whole and decimal part in string with a fullstop between them
+    //stringVal = String(int(gradi)) + "." + String(getDecimal(gradi));
+    //Serial.print("stringVal: ");Serial.println(stringVal);              //display string value
+
+    char charVal[stringVal.length()+1];                      //initialise character array to store the values
+
+    stringVal.toCharArray(charVal,stringVal.length()+1);     //passing the value of the string to the character array
+//------------------------------------------------------------
+//  /*
+    Serial.print("charVal:   "); // charVal stringa completa di \0 finale
+    for(uint8_t i=0; i<sizeof(charVal)-1;i++) {   // stampa i caratteri singoli
+        Serial.print(charVal[i]);
+        Serial.print("_"); //display character array
+    }
+    Serial.println("");
+    Serial.print("0 : ");Serial.println(charVal[0]);
+    Serial.print("3 : ");Serial.println(charVal[3]);
+    Serial.print("5 : ");Serial.println(charVal[5]);
+//  */
+    //return;
+}       // esce da EsameFloat
+// ============================================================================
+//function to extract decimal part of float
+long getDecimali(float val) {
+    int intPart = int(val);     // prende la parte intera es. di 317,23 ottiene 317
+    long decPart = 1000 * (val - intPart);  // ottengo prima 0,23 poi 230 (moltiplicato per 1000) x 3 decimali
+    //Serial.print("parte intera del numero    :");Serial.println(intPart);
+    //Serial.print("parte decimale del numero  :");Serial.println(decPart);
+    if (decPart > 0) { return(decPart);} // se c'e' ritorna la parte decimale
+    else if(decPart < 0) { return((-1)*decPart);} // se negativo, moltiplica per -1
+    else { return(0);}                  //return 0 se non c'e' parte decimale
+}
+// ============================================================================

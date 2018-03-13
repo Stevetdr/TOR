@@ -1,0 +1,14 @@
+
+
+
+
+
+.build/nano328/src/DS3231.cpp : src/DS3231.ino
+	@mkdir -p .build/nano328/src
+	@echo [93msrc/DS3231.ino[0m
+	@/usr/local/bin/ino preproc  -o $@ $^
+
+
+all : .build/nano328/src/DS3231.cpp
+	@true
+
