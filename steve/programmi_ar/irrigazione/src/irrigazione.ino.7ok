@@ -1,0 +1,550 @@
+// programma di SS
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include "PCF8574.h"
+#include "DS3232RTC.h"
+#include <string.h>
+#include <stdio.h>
+#include "SteveGen.h"       // librerie costruite da Stefano 07 03 18
+
+#define DS3231_I2C_ADDRESS      0x68    // i2c 0x68 del DS3231
+#define DS3231_indirizzo        0x68    //    "     "
+#define DS3231_TEMPERATURE_ADDR 0x11    // indirizzo della memoria interna
+#define DS3231_TEMPERATURE_registro 0x11 //    "     "
+
+LiquidCrystal_I2C lcd(0x23,16,2);       // i2c 0x38 LCD 16x2
+//PCF8574 tastiera(0x25);                 // i2c 0x25 per gestione tastiera con PCF8574
+
+int Key_Press = 0;          // per tastiera
+uint8_t value = 0;          // per tastiera
+uint8_t value1 = 0;         // per tastiera
+int i = 0;
+int col = 0;                // per LCD
+int linea = 0;              // per LCD
+int lung;                // intero senza segno
+int flag = 0; float gradiC = 0;
+
+// character from 0 to 7 special to build 5x7 pixel
+uint8_t gradi[8]    = {0x0C,0x0C,0x07,0x08,0x08,0x07,0x00};
+uint8_t clock[8]    = {0x00,0x0E,0x15,0x17,0x11,0x0E,0x00};
+uint8_t heart[8]    = {0x00,0x0A,0x1F,0x1F,0x0E,0x04,0x00};
+uint8_t check[8]    = {0x00,0x01,0x03,0x16,0x1C,0x08,0x00};
+uint8_t retarrow[8] = {0x01,0x01,0x05,0x09,0x1F,0x08,0x04};
+uint8_t uparrow[8]  = {0x00,0x04,0x0E,0x15,0x04,0x04,0x00};
+uint8_t dnarrow[8]  = {0x00,0x04,0x04,0x15,0x0E,0x04,0x00};
+uint8_t riarrow[8]  = {0x00,0x04,0x02,0x1F,0x02,0x04,0x00};
+
+char testo1[] = "Irrigazione V119";      // testo iniziale - versione
+char testo2[] = "Modifica  ora   "; // visualizza CAMBIO ORA --------------
+char testo4[] = "Modifica  data  "; // visualizza CAMBIO DATA -------------
+char testo5[] = "Ena/Disa rele'  "; // Ena/Disa rele ----------------------
+char testo6[] = "Cambia ora pompe"; // Cambia orario pompe start stop -----
+char testo7[] = "Cambia ->       "; // per cambio ora e data --------------
+char testo8[] =           "hhmmss"; // su linea 1 per cambio ora ----------
+char testo9[] =           "ggmmaa"; // su linea 1 per cambio data ---------
+char testoA[] =           "      "; // su linea 1 per blank su ora/data ---
+
+//-----------------------------------------------------------------------------
+void setup() {
+    Serial.begin(9600);             // apri il canale Seriale per output
+    lcd.init();                     // inizializza  lcd
+    pinMode(8, INPUT);              // pin per lettura tasto val 1
+    pinMode(9, INPUT);              // pin per lettura tasto val 2
+    pinMode(10, INPUT);             // pin per lettura tasto val 4
+    pinMode(11, INPUT);             // pin per lettura tasto val 8
+    pinMode(12, OUTPUT);            // pin abilitato per verificare il flag timer
+    //setDS3231time(30,33,18,1,26,02,19); // sec min ore giorno_sett giorno mese anno
+    //timeSS(DS3231_indirizzo); // solo per settare un campo -da migliorare
+    // Spedisce i caratteri utente all'LCD
+    lcd.createChar(0, gradi);       // simbo del grado °C
+    lcd.createChar(1, clock);       // simbolo dell'orologio
+    lcd.createChar(2, heart);       //                          da mettere simbolo del disabilitato
+    lcd.createChar(3, check);       // simbolo dell'abilitato
+    lcd.createChar(4, retarrow);    // freccia return
+    lcd.createChar(5, uparrow);     // freccia in su
+    lcd.createChar(6, dnarrow);     // freccia in giu
+    lcd.createChar(7, riarrow);     // freccia a destra
+
+    setAlarm1(DS3231_indirizzo);    // abilita i bit del DS3231 per ottenere allarme di un secondo
+
+    WriteString(testo1, 0, 0); // serve per vedere la versione
+    delay(1000);
+
+    schermata_zero();
+}
+//-----------------------------------------------------------------------------
+void loop() {                                           // programma principale
+
+    int Key_Press = LeggeTasti();
+    if (Key_Press != 0) {       // se ritorna 0, continua il loop altrimenti
+        MenuPrincipale();       // vai al menu principale per le selezioni
+    }
+
+    WriteTime(8, 1);            // visualizza sulla line 1 l'ora -> HH:MM:SS
+    delay(250);                 // delay
+
+    flag = CheckAlarm(DS3231_indirizzo);        // se flag=0, allarme (di 1 secondo) non scattato
+    if (flag == 1) {            // se flag=1, allarme scattato, da resettare
+        //Serial.println(" FLAG =1 ");
+        digitalWrite(12, HIGH);                                  // LED acceso
+        flag = 0;                           // reset del flag
+        clearA1F(DS3231_indirizzo);         // reset del flag del DS3231
+        //displayTime(DS3231_indirizzo);    // stampa su Serial, ora e data
+        delay(200);                         // delay
+        digitalWrite(12, LOW);                                  // LED spento
+        gradiC = DS3231_get_treg(DS3231_indirizzo, DS3231_TEMPERATURE_registro);  // legge la temperatura della sonda
+        lcd.setCursor(0,1);                 // prima posizione linea 2
+        lcd.print((char)0);                 // stampa °C
+        // verifica se si puo' semplificare la stampaGradi spostando la write dopo!!!!!!!
+        stampaGradi(gradiC, 1, 1);          // su LCD i gradi dal col 1 su linea 1
+        lcd.setCursor(7,1);                 // posizione dell' orologio
+        lcd.print((char)1);                 // carattere orologio
+    }
+   // int tempC = DS3231_get_treg(DS3231_I2C_ADDRESS, DS3231_TEMPERATURE_ADDR);  // Reads the temperature as an int, to save memory
+   // float tempC = DS3231_get_treg(DS3231_I2C_ADDRESS, DS3231_TEMPERATURE_ADDR);
+}
+//-----------------------------------------------------------------------------
+void MenuPrincipale(void) {             // loop sulle possibili scelte del menu
+
+    lcd.clear();
+    lcd.setCursor(0,1); lcd.print((char)7);  // posizione del carattere di skip
+    lcd.setCursor(6,1); lcd.print((char)4);  // "  carattere enter
+    //°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+    WriteString(testo2, 0, 0);          // visualizza su LCD "Modifica  ora   "
+    Key_Press = 0;  // reset
+    while (Key_Press == 0) { Key_Press = LeggeTasti(); } // in Attesa!
+    if (Key_Press == 1) {
+        //Serial.println("premuto skip1");
+        schermata_cambio_OraData(1); // si va' alla schermata cambio ORA
+    }    //°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+
+    WriteString(testo4, 0, 0);          // visualizza su LCD "Modifica  data  "
+    Key_Press = 0;  // reset
+    while (Key_Press == 0) { Key_Press = LeggeTasti(); } // in Attesa!
+    if (Key_Press == 1) {
+        //Serial.println("premuto skip2");
+        schermata_cambio_OraData(2); // si va' alla schermata cambio DATA
+    }    //°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+
+    WriteString(testo5, 0, 0);           // visualizza su LCD "Ena/Disa rele'  "
+    Key_Press = 0;  // reset
+    while (Key_Press == 0) { Key_Press = LeggeTasti(); } // in Attesa!
+    if (Key_Press == 1) {
+        //Serial.println("premuto skip3");
+    }    //°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+
+    WriteString(testo6, 0, 0);           // visualizza su LCD "Cambia ora pompe"
+    Key_Press = 0;  // reset
+    while (Key_Press == 0) { Key_Press = LeggeTasti(); } // in Attesa!
+    if (Key_Press == 1) {
+        //Serial.println("premuto skip4");
+    }    //°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+
+    // ----------------------------------- ripristina schermata di partenza ---
+    schermata_zero();
+}
+//-----------------------------------------------------------------------------
+void schermata_zero(void) {     // stampa la schermata iniziale
+    lcd.clear();
+    char testo1[]  = "Premi un tasto  ";
+    WriteString(testo1, 0, 0);      // va alla stampa
+    lcd.setCursor(7,1); lcd.print((char)1);   // posizione dell' orologio
+    lcd.setCursor(10,1); lcd.print(":"); // due punti orario
+    lcd.setCursor(13,1); lcd.print(":"); // "
+    WriteTime(8, 1);            // visualizza sulla line 1 l'ora -> HH:MM:SS
+}
+//-----------------------------------------------------------------------------
+void schermata_cambio_OraData(int i) {  // schermata CAMBIO 1 = ORA o 2 = DATA
+    int H[20];   // definizione matrice contenitore singoli dati ORA e DATA   (*)
+    int X[20]={0,2,9,5,9,5,9,0,0,0,0,3,9,1,9,9,9}; //val max per gli elementi (*)
+    int CursPos = 10;                  // posizione cursore alla partenza
+    int skip = 0;                      // per utilizzo nella routine
+    int fuori = 0;                     // per utilizzo nella routine
+    int delta = 0;                     // serve per distinguere ora da data +10
+    int indice = 0;                    // puntatore a H[] e X[]
+    byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+    readDS3231time(DS3231_indirizzo, &second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+
+    // trasferimento dati in ORA +++++++++++++(da 1 a 6)   per l'orario Hxx:xx:xx
+    if (hour<10) { H[1] = 0; H[2] = hour; }         // trasformazione ore
+    else { H[1] = int(hour/10); H[2] = hour - ( H[1] * 10); }
+
+    if (minute<10) { H[3] = 0; H[4] = minute; }     // trasformazione minuti
+    else { H[3] = int(minute/10); H[4] = minute - ( H[3] * 10); }
+
+    if (second<10) { H[5] = 0; H[6] = second; }    // trasformazione secondi
+    else { H[5] = int(second/10); H[6] = second - ( H[5] * 10); }
+    // trasferimento dati in DATA  +++++++++++++(da 11 a 16) per la data Hxx:xx:xx
+    if (dayOfMonth<10) { H[11] = 0; H[12] = dayOfMonth; } // trasformazione giorno
+    else { H[11] = int(dayOfMonth/10); H[12] = dayOfMonth - ( H[11] * 10); }
+
+    if (month<10) { H[13] = 0; H[14] = month; }            // trasformazione mese
+    else { H[13] = int(month/10); H[14] = month - ( H[13] * 10); }
+
+    H[15] = int( year / 10);        // int(18/10) = 1 trasforma anno  decimale
+    H[16] = year - (H[15] * 10);     // 18-(1*10) = 8                 decimale
+
+    lcd.clear();
+    lcd.setCursor(0,1); lcd.print((char)7);  // posizione del carattere di skip
+    lcd.setCursor(2,1); lcd.print((char)5);  //  " carattere freccia su
+    lcd.setCursor(4,1); lcd.print((char)6);  // "  carattere freccia giu
+    lcd.setCursor(6,1); lcd.print((char)4);  // "  carattere enter
+    WriteString(testo7, 0, 0);      // scrive CAMBIA ->
+    // In questa parte si costruisce la schemata base per i cambi
+
+    if (i == 1) {                   // stampa parte schermo per cambio ORA  (1)
+        delta = 0;                  // indica il delta per l' ORA (per data e' =10)
+        skip = 10;                  //CursPos;     // in skip il valore della posizione del cursore che
+        WriteString(testo8, 10, 1);      // scrive "hhmmss"
+
+        lcd.setCursor(CursPos, 0); lcd.print(H[delta+1]); lcd.print(H[delta+2]);
+        lcd.print(H[delta+3]); lcd.print(H[delta+4]); lcd.print(H[delta+5]); lcd.print(H[delta+6]);
+        lcd.blink(); // fa' lampeggiare il cursore alla posizione fissata
+        lcd.setCursor(CursPos,0); // posiziona il cursore nella posizione 8, linea 0
+                            // corrisponde al puntamento al carattere (valore) a cui fare riferimento
+        fuori = 0;          // serve solo per uscire dal loop del WHILE
+        indice = 1;         // partenza della prima variabile per hhmmss (per data -> 11)
+
+        while (fuori == 0) {
+            Key_Press = 0;          // per lettura tastiera fisso
+            //-----------------------------------------------------------------
+            while (Key_Press == 0) {
+                Key_Press = LeggeTasti();  // sono in Attesa!
+                delay(250);
+                switch (Key_Press) {
+                    case 1: {       // premuto ok       val=1 ->  salva i dati
+                        CursPos = skip; // risalva i dati in CursPos per altri scopi            ???? serve
+                        fuori=99;
+                        setDS3231time(DS3231_indirizzo, H[5]*10+H[6], H[3]*10+H[4], H[1]*10+H[2], 1, H[11]*10+H[12],H[13]*10+H[14],H[15]*10+H[16]); // sec min ore giorno_sett giorno mese anno
+                        lcd.noBlink();  // via al lampeggio del cursore
+                        WriteString(testoA, 10, 1);      // pulisce hhmmss o ggmmaa
+                        break;}
+                    case 2: {       // premuto giu'     val=2 ->  decrementa !!!
+                        H[indice] = H[indice] - 1;  // decrementa il valore
+                        if (H[indice] < 0) {        // controllo se superato lo zero minimo(-1)
+                            H[indice] = X[indice] ;      // se si, rimetto il valore massimo X[skip]
+                        }
+                        lcd.print(H[indice]);           // stampo alla posizione il valore
+                        lcd.setCursor(skip, 0);    // posizione il cursore nel punto giusto
+                        break;}
+                    case 4: {       // premuto su'      val=4 ->  incrementa !!!
+                        H[indice] = H[indice] + 1;  // incrementa il valore
+                        if (H[indice] > X[indice]) {    // controllo se superato il massimo
+                            H[indice] = 0;           // se si, rimetto il valore minimo (0)
+                        }
+                        lcd.print(H[indice]);     // stampo alla posizione il valore H[x]
+                        lcd.setCursor(skip, 0); // ri posizione il cursore indietro di una casella
+                        break;}
+                    case 8: {       // premuto skip     val=8 ->  salta a destra                OK!!!
+                        skip = skip + 1;        // a destra di un carattere
+                        indice = indice + 1;    // aumenta per la cifra successiva
+
+                        if (skip >= 16) {
+                            indice = 1;         // da 6 si passa a 1
+                            skip = 10;}         // riposiziona se supera
+                        lcd.setCursor(skip, 0); // per reset del cursore
+                        break;}
+                    default: {      // premuto diverso da 1 2 4 8
+                        break; }
+                }
+            }
+        }               // fuori=0  se valorizzato diverso da zero
+    }
+    // fine if del cambio ora .......................................(i == 1)
+    else if  (i == 2) {             // stampa parte schermo per cambio DATA (2)
+        delta = 10;                 // indica il delta per la DATA (+10 nelle variabili)
+        skip = 10;                  //CursPos;     // in skip il valore della posizione del cursore che
+        WriteString(testo9, 10, 1);      // scrive "ggmmaa"
+
+    //    Serial.println("dati letti prima di ogni modifica : ");
+    //    Serial.print(H[11]);Serial.print("-"); Serial.print(H[12]);
+    //    Serial.print("-"); Serial.print(H[13]);Serial.print("-"); Serial.print(H[14]);
+    //    Serial.print("-"); Serial.print(H[15]);Serial.print("-"); Serial.println(H[16]);
+
+        lcd.setCursor(CursPos, 0); lcd.print(H[delta+1]); lcd.print(H[delta+2]);
+        lcd.print(H[delta+3]); lcd.print(H[delta+4]); lcd.print(H[delta+5]); lcd.print(H[delta+6]);
+        lcd.blink(); // fa' lampeggiare il cursore alla posizione fissata
+        lcd.setCursor(CursPos,0); // posiziona il cursore nella posizione 8, linea 0
+                            // corrisponde al puntamento al carattere (valore) a cui fare riferimento
+        fuori = 0;          // serve solo per uscire dal loop del WHILE
+        indice = 11;        // partenza della prima variabile per hhmmss (per data -> 11)
+
+        //Serial.print(" si parte con il while");
+        while (fuori == 0) {                // punto D
+            Key_Press = 0;          // per lettura tastiera fisso
+            //Serial.print("fuori :");Serial.println(fuori);
+            //-----------------------------------------------------------------
+            while (Key_Press == 0) {        // punto C
+                Key_Press = LeggeTasti();  // sono in Attesa!
+                //Serial.print("Key_Press : ");Serial.println(Key_Press);
+                delay(250);
+                switch (Key_Press) {        // punto B
+                    case 1: {       // premuto ok       val=1 ->  salva i dati
+                        //Serial.println("premuto 1");
+                        CursPos = skip; // risalva i dati in CursPos per altri scopi            ???? serve
+                        // + deve andare a settare il clock interno con i valori modificati
+                        // mettendo tutti i valori e chiamando la routine corretta
+                        fuori=99;
+                //        Serial.print("H[11..]1 ");Serial.print(H[11]);Serial.print("-"); Serial.print(H[12]);
+                //        Serial.print("-"); Serial.print(H[13]);Serial.print("-"); Serial.print(H[14]);
+                //        Serial.print("-"); Serial.print(H[15]);Serial.print("-"); Serial.println(H[16]);
+                        setDS3231time(DS3231_indirizzo, H[5]*10+H[6], H[3]*10+H[4], H[1]*10+H[2], 1, H[11]*10+H[12],H[13]*10+H[14],H[15]*10+H[16]); // sec min ore giorno_sett giorno mese anno
+                        lcd.noBlink();  // via al lampeggio del cursore
+                        WriteString(testoA, 10, 1);      // pulisce hhmmss o ggmmaa
+                ////        Serial.print("H[11..]2 ");Serial.print(H[11]);Serial.print("-"); Serial.print(H[12]);
+                ////        Serial.print("-"); Serial.print(H[13]);Serial.print("-"); Serial.print(H[14]);
+                ////        Serial.print("-"); Serial.print(H[15]);Serial.print("-"); Serial.println(H[16]);
+                        break;}
+                    case 2: {       // premuto giu'     val=2 ->  decrementa !!!
+                        H[indice] = H[indice] - 1;  // decrementa il valore
+                        if (H[indice] < 0) {        // controllo se superato lo zero minimo(-1)
+                            H[indice] = X[indice] ;      // se si, rimetto il valore massimo X[skip]
+                        }
+                        lcd.print(H[indice]);           // stampo alla posizione il valore
+                        lcd.setCursor(skip, 0);    // posizione il cursore nel punto giusto
+                        //lcd.setCursor(9+indice, 0);  // arretra di uno per rimettere a posto il cursore
+                        // occhio che dovrebbe andare avanti di un carattere             // via dopo
+                    //    Serial.print("valore indice : ");Serial.println(indice);//Serial.print(" / ");Serial.println(delta);
+                    //    Serial.print("Valore di: H[indice] / X[indice] massimo :: ");           // via dopo
+                    //    Serial.print(H[indice]);Serial.print(" / ");Serial.println(X[indice]);    // via dopo
+                //        Serial.print("H[11..] ");Serial.print(H[11]);Serial.print("-"); Serial.print(H[12]);
+                //        Serial.print("-"); Serial.print(H[13]);Serial.print("-"); Serial.print(H[14]);
+                //        Serial.print("-"); Serial.print(H[15]);Serial.print("-"); Serial.println(H[16]);                             // via dopo
+                        break;}
+                    case 4: {       // premuto su'      val=4 ->  incrementa !!!
+                        H[indice] = H[indice] + 1;  // incrementa il valore
+                        if (H[indice] > X[indice]) {    // controllo se superato il massimo
+                            H[indice] = 0;           // se si, rimetto il valore minimo (0)
+                        }
+                        lcd.print(H[indice]);     // stampo alla posizione il valore H[x]
+                        lcd.setCursor(skip, 0); // ri posizione il cursore indietro di una casella
+                        //lcd.setCursor(9+indice-1, 0);  // arretra di uno per rimettere a posto il cursore
+                        // occhio che dovrebbe andare avanti di un carattere          // via dopo
+                    //    Serial.print("valore indice : ");Serial.println(indice);//Serial.print(" / ");Serial.println(delta);
+                    //    Serial.print("Valore di: H[indice] / X[indice] massimo == ");           // via dopo
+                    //    Serial.print(H[indice]);Serial.print(" / ");Serial.println(X[indice]);    // via dopo
+                //        Serial.print("H[11..] ");Serial.print(H[11]);Serial.print("-"); Serial.print(H[12]);
+                //        Serial.print("-"); Serial.print(H[13]);Serial.print("-"); Serial.print(H[14]);
+                //        Serial.print("-"); Serial.print(H[15]);Serial.print("-"); Serial.println(H[16]);
+                        break;}
+                    case 8: {       // premuto skip     val=8 ->  salta a destra                OK!!!
+                        //Serial.println("premuto 8");
+                        skip = skip + 1;        // a destra di un carattere
+                        indice = indice + 1;    // aumenta per la cifra successiva
+                //        Serial.print("      +   +   +   -> valore skip / indice -> : ");Serial.print(skip);Serial.print(" / ");Serial.println(indice);
+
+                        if (skip >= 16) {
+                            indice = 1;         // da 6 si passa a 1
+                            skip = 10;}         // riposiziona se supera
+                        lcd.setCursor(skip, 0); // per reset del cursore
+                //        Serial.print("      -   -   -   -> valore skip / indice -> : ");Serial.print(skip);Serial.print(" / ");Serial.println(indice);
+                        break;}
+                    default: {      // premuto diverso da 1 2 4 8
+                        //Serial.println("istruzione di default del punto C");
+                        break; }
+                }       // chiude punto B
+            }           // chiude punto C
+        }               // chiude punto D   // fuori=0  se valorizzato diverso da zero
+    } // fine if del cambio data .............................................(i == 2)
+
+
+// (*) Spiegazione : si passano alle relative routine: l'indice del valore massimo
+//  che si puo' raggiungere (il minimo e' sempre 0). La sub-routine controlla
+//  l'aumento e restituisce il valore corretto. Se deve poi mettere su LCD
+}   // fine della routine #####################################################
+
+//-----------------------------------------------------------------------------
+void schermata_cambio_OraData_bis(int i, int delta) {
+    Serial.print("n");
+// da riempire <<<<<<<<<<<<<<<<<<<<<<<<--------------------
+
+}
+//-----------------------------------------------------------------------------
+void WriteString(char testo[], int col, int linea)  {
+    // riceve il testo e la col da cui partire. Linea 0 o 1
+    lung = strlen(testo)-1;   // calcola la lunghezza del testo e sottrae il \0
+    for (i=0; i <= lung; i++) { // loop per scrivere
+        lcd.setCursor(i + col , linea); // posiziona il cursore
+        lcd.print(testo[i]);            // scrive il testo
+    }
+}
+//-----------------------------------------------------------------------------
+void WriteTime(int col, int linea) {    // a video lcd i valori dell'orario
+    // scrive HH:MM:SS alla colonna col e sulla linea 0 o 1
+    byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+    // retrieve data from DS3231
+    readDS3231time(DS3231_I2C_ADDRESS, &second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+    // - - - - - - - - - - stampa le ore - - - - - - - - - - - - -
+    lcd.setCursor(col, linea);
+    if (hour<10) {
+        lcd.print("0");
+        lcd.print(hour);
+    }
+    else {
+        lcd.print(int(hour/10));
+        lcd.print(hour-(int(hour/10)*10));
+    }
+    // - - - - - - - - - - stampa i minuti - - - - - - - - - - - -
+    lcd.setCursor(col+3, linea);
+    if (minute<10) {
+        lcd.print("0");
+        lcd.print(minute);
+    }
+    else {
+        lcd.print(int(minute/10));
+        lcd.print(minute-(int(minute/10)*10));
+    }
+    // - - - - - - - - - - stampa i secondi  - - - - - - - - - - -
+    lcd.setCursor(col+6, linea);
+    if (second<10) {
+        lcd.print("0");
+        lcd.print(second);
+    }
+    else {
+        lcd.print(int(second/10));
+        lcd.print(second-(int(second/10)*10));
+    }
+}
+//-----------------------------------------------------------------------------
+void stampaGradi(float gradiC, int col, int linea) {
+    // PROVARE ad inviare il valore e prendere la stringa per portare fuori la WriteString(---) !!!!!
+    // si potra' anche togliere la col e la linea da sopra
+
+    // ATTENZIONE: il valore gradiC deve essere compreso tra -32000 e +32000
+    //  oltre si sballa tutto. Converte solo 3 decimali
+    // stampa temperatura in gradiC del DS sul LCD da colonna su linea
+    // non si riesce a mettere in SteveGen perche' mi da' errore
+    String stringVal = "";      // reset della stringa
+
+    stringVal = String(int(gradiC)) + "." + String(getDecimali(gradiC));
+    char charVal[stringVal.length()+1];
+
+    if (gradiC >= 0) {      // se gradi=>0 mette il + davanti alla cifra da stampare
+        stringVal =  "+" + stringVal;
+    }
+
+    stringVal.toCharArray(charVal,stringVal.length()-1); // +1
+
+    WriteString(charVal, col, linea);     // solo questo OK
+    //WriteString(charVal, 1, 1);     // questa e' la vecchia istruzione che funzionava, da togliere
+}       // esce da stampaGradi
+//-----------------------------------------------------------------------------s
+long getDecimali(float val) {
+    // questa funzione estrae la parte decimale del float dei gradi
+    int intPart = int(val);     // prende la parte intera es. di 317,23 ottiene 317
+    long decPart = 1000 * (val - intPart);  // ottengo prima 0,23 poi 230 (moltiplicato per 1000) x 3 decimali
+    if (decPart >= 0) { return(decPart);} // se c'e' ritorna la parte decimale
+    else if(decPart < 0) { return((-1)*decPart);} // se negativo, moltiplica per -1
+    else { return(0);}                  //return 0 se non c'e' parte decimale
+}       // esce da getDecimali vedi stampaGradi per utilizzo
+//-----------------------------------------------------------------------------
+
+
+
+
+/*
+
+    if (i == 1) {   // punto E                // stampa parte schermo per cambio ORA  (1)
+        delta = 0;                  // indica il delta per l' ORA (per data e' =10)
+        //indice = 1;                 // prova per putnamento dati della H e X
+        skip = 10;                  //CursPos;     // in skip il valore della posizione del cursore che
+        WriteString(testo8, 10, 1);      // scrive "hhmmss"
+
+
+        //Serial.print("H[1..] inizio  ");Serial.print(H[1]);Serial.print(" - "); Serial.print(H[2]);
+        //Serial.print(" - "); Serial.print(H[3]);Serial.print(" - "); Serial.print(H[4]);
+        //Serial.print(" - "); Serial.print(H[5]);Serial.print(" - "); Serial.println(H[6]);
+            // da qui e' uguale, posso fare una subroutine che comprenda tutto quello tra i limiti?!?!?!?!?
+        // stampa su lcd i valori dell'orario
+        lcd.setCursor(CursPos, 0); lcd.print(H[delta+1]); lcd.print(H[delta+2]);
+        lcd.print(H[delta+3]); lcd.print(H[delta+4]); lcd.print(H[delta+5]); lcd.print(H[delta+6]);
+        lcd.blink(); // fa' lampeggiare il cursore alla posizione fissata
+        lcd.setCursor(CursPos,0); // posiziona il cursore nella posizione 8, linea 0
+                            // corrisponde al puntamento al carattere (valore) a cui fare riferimento
+
+        fuori = 0;          // serve solo per uscire dal loop del WHILE
+        indice = 1;         // partenza della prima variabile per hhmmss (per data -> 11)
+
+        //Serial.print(" si parte con il while");
+        while (fuori == 0) {                // punto D
+            Key_Press = 0;          // per lettura tastiera fisso
+            //Serial.print("fuori :");Serial.println(fuori);
+            //-----------------------------------------------------------------
+            while (Key_Press == 0) {        // punto C
+                Key_Press = LeggeTasti();  // sono in Attesa!
+                //Serial.print("Key_Press : ");Serial.println(Key_Press);
+                delay(250);
+                switch (Key_Press) {        // punto B
+                    case 1: {       // premuto ok       val=1 ->  salva i dati
+                        //Serial.println("premuto 1");
+                        CursPos = skip; // risalva i dati in CursPos per altri scopi            ???? serve
+                        // + deve andare a settare il clock interno con i valori modificati
+                        // mettendo tutti i valori e chiamando la routine corretta
+                        fuori=99;
+                        // ATTENZIONE SALVA SOLO LE ORE !!!!!
+                        setDS3231time(DS3231_indirizzo, H[5]*10+H[6], H[3]*10+H[4], H[1]*10+H[6], 1,10,10,10); // sec min ore giorno_sett giorno mese anno
+                        lcd.noBlink();  // via al lampeggio del cursore
+                        WriteString(testoA, 10, 1);      // pulisce hhmmss o ggmmaa
+                    //    Serial.print("H[1..] ");Serial.print(H[1]);Serial.print("-"); Serial.print(H[2]);
+                    //    Serial.print("-"); Serial.print(H[3]);Serial.print("-"); Serial.print(H[4]);
+                    //    Serial.print("-"); Serial.print(H[5]);Serial.print("-"); Serial.println(H[6]);
+                        break;}
+                    case 2: {       // premuto giu'     val=2 ->  decrementa !!!
+                        H[indice] = H[indice] - 1;  // decrementa il valore
+                        if (H[indice] < 0) {        // controllo se superato lo zero minimo(-1)
+                            H[indice] = X[indice] ;      // se si, rimetto il valore massimo X[skip]
+                        }
+                        lcd.print(H[indice]);           // stampo alla posizione il valore
+                        lcd.setCursor(skip, 0);    // posizione il cursore nel punto giusto
+                        //lcd.setCursor(9+indice, 0);  // arretra di uno per rimettere a posto il cursore
+                        // occhio che dovrebbe andare avanti di un carattere             // via dopo
+                    //    Serial.print("valore indice : ");Serial.println(indice);//Serial.print(" / ");Serial.println(delta);
+                    //    Serial.print("Valore di: H[indice] / X[indice] massimo :: ");           // via dopo
+                    //    Serial.print(H[indice]);Serial.print(" / ");Serial.println(X[indice]);    // via dopo
+                    //    Serial.print("H[1..] ");Serial.print(H[1]);Serial.print(" - "); Serial.print(H[2]);
+                    //    Serial.print(" - "); Serial.print(H[3]);Serial.print(" - "); Serial.print(H[4]);
+                    //    Serial.print(" - "); Serial.print(H[5]);Serial.print(" - "); Serial.println(H[6]);                              // via dopo
+                        break;}
+                    case 4: {       // premuto su'      val=4 ->  incrementa !!!
+                        H[indice] = H[indice] + 1;  // incrementa il valore
+                        if (H[indice] > X[indice]) {    // controllo se superato il massimo
+                            H[indice] = 0;           // se si, rimetto il valore minimo (0)
+                        }
+                        lcd.print(H[indice]);     // stampo alla posizione il valore H[x]
+                        lcd.setCursor(skip, 0); // ri posizione il cursore indietro di una casella
+                        //lcd.setCursor(9+indice-1, 0);  // arretra di uno per rimettere a posto il cursore
+                        // occhio che dovrebbe andare avanti di un carattere          // via dopo
+                    //    Serial.print("valore indice : ");Serial.println(indice);//Serial.print(" / ");Serial.println(delta);
+                    //    Serial.print("Valore di: H[indice] / X[indice] massimo == ");           // via dopo
+                    //    Serial.print(H[indice]);Serial.print(" / ");Serial.println(X[indice]);    // via dopo
+                    //    Serial.print("H[1..] ");Serial.print(H[1]);Serial.print(" - "); Serial.print(H[2]);
+                    //    Serial.print(" - "); Serial.print(H[3]);Serial.print(" - "); Serial.print(H[4]);
+                    //    Serial.print(" - "); Serial.print(H[5]);Serial.print(" - "); Serial.println(H[6]);
+                        break;}
+                    case 8: {       // premuto skip     val=8 ->  salta a destra                OK!!!
+                        //Serial.println("premuto 8");
+                        skip = skip + 1;        // a destra di un carattere
+                        indice = indice + 1;    // aumenta per la cifra successiva
+                    //    Serial.print("      +   +   +   -> valore skip / indice -> : ");Serial.print(skip);Serial.print(" / ");Serial.println(indice);
+
+                        if (skip >= 16) {
+                            indice = 1;         // da 6 si passa a 1
+                            skip = 10;}         // riposiziona se supera
+                        lcd.setCursor(skip, 0); // per reset del cursore
+                    //    Serial.print("      -   -   -   -> valore skip / indice -> : ");Serial.print(skip);Serial.print(" / ");Serial.println(indice);
+                        break;}
+                    default: {      // premuto diverso da 1 2 4 8
+                        //Serial.println("istruzione di default del punto C");
+                        break; }
+                }       // chiude punto B
+            //Serial.println("dopo B");
+            }           // chiude punto C
+        //Serial.println("dopo punto C");
+        }               // chiude punto D   // fuori=0  se valorizzato diverso da zero
+        //Serial.println("dopo punto D");
+        //Serial.println(fuori);
+    // fino a qui
+    }                   // chiude punto E
+    // fine if del cambio ora .......................................(i == 1)
+
+    */

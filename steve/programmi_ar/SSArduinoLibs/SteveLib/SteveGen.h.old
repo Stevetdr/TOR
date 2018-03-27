@@ -4,17 +4,14 @@
 void displayTime(int DS3231_indirizzo);
 void readDS3231time(int DS3231_indirizzo, byte *second,byte *minute,byte *hour,byte *dayOfWeek,
 byte *dayOfMonth,byte *month,byte *year);
-void stampaGradi(float gradiC, int col, int linea);     // inserita in GMM con funzione
-long getDecimali(float val);                            // questo era gia' qui
-
+long getDecimali(float val);
 void setDS3231time(int DS3231_indirizzo, byte second, byte minute, byte hour, byte dayOfWeek, byte
 dayOfMonth, byte month, byte year);
 void ScriveEEprom (int valore, int address);
-void WriteString(char testo[], int col, int linea) ;
+//void WriteString(char testo[], int col, int linea) ;
 //*************************************************************** fine prototype
-//==============================================================================
-//==============================================================================
-//==============================================================================
+
+
 
 //-----------------------------------------------------------------------------
 // Convert binary coded decimal to normal decimal numbers
@@ -23,7 +20,6 @@ byte bcdToDec(byte val) { return( (val/16*10) + (val%16) );}
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val) { return( (val/10*16) + (val%10) );}
 //-----------------------------------------------------------------------------
-// legge i registri del DS e restituisce il valore convertito in float
 float DS3231_get_treg(int DS3231_indirizzo, int DS3231_TEMPERATURE_registro) {
     float rv;  // oppure    int rv;  // Reads the temperature as an int, to save memory
 
@@ -46,7 +42,6 @@ float DS3231_get_treg(int DS3231_indirizzo, int DS3231_TEMPERATURE_registro) {
     return rv;
 }
 //-----------------------------------------------------------------------------
-// legge e visualizza tutti i registri del DS3231 su Serial
 void displayRegDS3231(int DS3231_indirizzo, int DS3231_TEMPERATURE_registro) {
 byte Rseconds = 0; byte Rminutes = 0; byte Rhours = 0; byte Rdayof = 0;
 byte Rday = 0; byte Rmonth = 0; byte Ryear = 0;
@@ -271,22 +266,21 @@ void clearA1F(int DS3231_indirizzo) {    // reset del flag A1F dopo allarme e at
 int LeggeTasti() {  // legge tasti e restituisce 8-4-2-1 o zero
     int tastopremuto = 0;    // reset del tasto
     int memoria = 0;         // copia
-    int flag = 0;           // flag tasto premuto
+    int flagK = 0;           // flag tasto premuto
 
-    if (digitalRead(8)  == 0) {tastopremuto = 1; flag = 1 ;memoria = 8  ;}
-    if (digitalRead(9)  == 0) {tastopremuto = 2; flag = 1 ;memoria = 9  ;}
-    if (digitalRead(10) == 0) {tastopremuto = 4; flag = 1 ;memoria = 10 ;}
-    if (digitalRead(11) == 0) {tastopremuto = 8; flag = 1 ;memoria = 11 ;}
+    if (digitalRead(8)  == 0) {tastopremuto = 1; flagK = 1 ;memoria = 8  ;}
+    if (digitalRead(9)  == 0) {tastopremuto = 2; flagK = 1 ;memoria = 9  ;}
+    if (digitalRead(10) == 0) {tastopremuto = 4; flagK = 1 ;memoria = 10 ;}
+    if (digitalRead(11) == 0) {tastopremuto = 8; flagK = 1 ;memoria = 11 ;}
 
-    if (flag == 1) {      // loop per attendere rilascio tasto
-        flag = 0;         // reset del flag e poi attendo rilascio del tasto
+    if (flagK == 1) {      // loop per attendere rilascio tasto
+        flagK = 0;         // reset del flag e poi attendo rilascio del tasto
         while(digitalRead(memoria) != 1 ) { delay(100); }
     }
     return (tastopremuto);
 
     // devo inserire una funzione che conta e poi restituisce un valore es.99
-    // oppure il valore del timer che dopo un certo numero di secondi mi fa'
-    //  uscire dalla funzione se non premo altri tasti.
+    // che mi permette di uscire dalla funzione se non premo altri tasti.
 }
 //-----------------------------------------------------------------------------
 String DaHEXaBin(int valore, int nr_bit) {
@@ -310,9 +304,8 @@ String DaHEXaBin(int valore, int nr_bit) {
     return(myStr);
 }
 //-----------------------------------------------------------------------------
-void ResetEEprom(void) {    // resetta a 0 tutta la memoria del nano
-    // d
-    for (int i = 0; i <= 0x800; i++) {ScriveEEprom(0x00,i);}
+void ResetEEprom(void) {        // resetta a 0 tutta la memoria del nano
+    for (int i = 0; i <= 0x800; i++) {ScriveEEprom(0x00,i); }
 }
 //-----------------------------------------------------------------------------
 int LeggeEEprom (int address) {
@@ -327,36 +320,4 @@ void ScriveEEprom (int valore, int address) {
     EEPROM.write(address, valore);
     return ;       // tanto per scrivere qualcosa
 }
-//-----------------------------------------------------------------------------
-void stampaGradi(float gradiC, int col, int linea) {
-    // PROVARE ad inviare il valore e prendere la stringa per portare fuori la WriteString(---) !!!!!
-    // si potra' anche togliere la col e la linea da sopra
-
-    // ATTENZIONE: il valore gradiC deve essere compreso tra -32000 e +32000
-    //  oltre si sballa tutto. Converte solo 3 decimali
-    // stampa temperatura in gradiC del DS sul LCD da colonna su linea
-    // non si riesce a mettere in SteveGen perche' mi da' errore
-    String stringVal = "";      // reset della stringa
-
-    stringVal = String(int(gradiC)) + "." + String(getDecimali(gradiC));
-    char charVal[stringVal.length()+1];
-
-    if (gradiC >= 0) {      // se gradi=>0 mette il + davanti alla cifra da stampare
-        stringVal =  "+" + stringVal;
-    }
-
-    stringVal.toCharArray(charVal,stringVal.length()-1); // +1
-
-    WriteString(charVal, col, linea);     // solo questo OK
-    //WriteString(charVal, 1, 1);     // questa e' la vecchia istruzione che funzionava, da togliere
-}       // esce da stampaGradi
-//-----------------------------------------------------------------------------
-long getDecimali(float val) {
-    // questa funzione estrae la parte decimale del float dei gradi
-    int intPart = int(val);     // prende la parte intera es. di 317,23 ottiene 317
-    long decPart = 1000 * (val - intPart);  // ottengo prima 0,23 poi 230 (moltiplicato per 1000) x 3 decimali
-    if (decPart >= 0) { return(decPart);} // se c'e' ritorna la parte decimale
-    else if(decPart < 0) { return((-1)*decPart);} // se negativo, moltiplica per -1
-    else { return(0);}                  //return 0 se non c'e' parte decimale
-}       // esce da getDecimali vedi stampaGradi per utilizzo
 //-----------------------------------------------------------------------------

@@ -1,0 +1,6 @@
+per eseguire il salvataggio in automatico digitare:
+
+bash git.sh
+
+poi fa' tutto da solo. Salva con la data di oggi e l'ora del momento in cui si lancia il comando
+
