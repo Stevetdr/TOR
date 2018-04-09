@@ -341,9 +341,9 @@ void stampaGradi(float gradiC, int col, int linea) {
     stringVal = String(int(gradiC)) + "." + String(getDecimali(gradiC));
     char charVal[stringVal.length()+1];
 
-    if (gradiC >= 0) {      // se gradi=>0 mette il + davanti alla cifra da stampare
-        stringVal =  "+" + stringVal;
-    }
+    // se gradi=>0 mette il "+" davanti alla cifra, altrimenti mette il "-"
+    if (gradiC >= 0) {stringVal =  "+" + stringVal;}
+    else {stringVal =  "-" + stringVal;}
 
     stringVal.toCharArray(charVal,stringVal.length()-1); // +1
 

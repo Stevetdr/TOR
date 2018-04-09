@@ -26,11 +26,6 @@ uint8_t uparrow[8]  = {0x00,0x04,0x0E,0x15,0x04,0x04,0x00};
 uint8_t dnarrow[8]  = {0x00,0x04,0x04,0x15,0x0E,0x04,0x00};
 uint8_t riarrow[8]  = {0x00,0x04,0x02,0x1F,0x02,0x04,0x00};
 
-// servono per i calcoli di accensione o spegnimento pompe
-long StartPompa1 = 0; long StopPompa1 = 0; int StatoPompa1;  // variabili pompa 1
-long StartPompa2 = 0; long StopPompa2 = 0; int StatoPompa2;  // variabili pompa 2
-long StartPompa3 = 0; long StopPompa3 = 0; int StatoPompa3;  // variabili pompa 3
-
 //-----------------------------------------------------------------------------
 void setup() {
     char testo1[] = "Irrigazione V128";     // testo iniziale - versione ----------
@@ -190,6 +185,10 @@ void Cambio_OraData(int i) {  // schermata CAMBIO 1 = ORA o 2 = DATA
     H[15] = int( year / 10);            // int(18/10) = 1 trasforma anno
     H[16] = year - (H[15] * 10);        // 18-(1*10) = 8
     // fine trasferimento dati++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//===============================================
+    VaiCheckTest(H);
+//===============================================
 
     lcd.clear();
     lcd.setCursor(0,1); lcd.print((char)7);  // posizione del carattere di skip
@@ -530,7 +529,7 @@ void CambiaOraSSPompe(int pompa, int P1[], int P2[], int P3[]) {
    // lcd.clear();
 }   // fine routine gestione cambio ora pompe start stop
 //-----------------------------------------------------------------------------
-void SetAlarmInit() {  // setta gli allarmi alla partenza per testare             // Set allarme iniziale per test
+void SetAlarmInit() {  // setta gli allarmi alla partenza per testare                                            // Set allarme iniziale per test
     int OA[13]={0,0,0,0,0,0,0,0,0,0,0,0,0}; // array di comodo Ora Attuale
 
     byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
@@ -561,7 +560,7 @@ void SetAlarmInit() {  // setta gli allarmi alla partenza per testare           
 
     ScriveEEprom ( OA[6]  , 0x16 ) ;ScriveEEprom ( OA[6]  , 0x26 ) ; ScriveEEprom ( OA[6]  , 0x36 ) ;   // U SS uguali
     ScriveEEprom ( OA[6]  , 0x1C ) ;ScriveEEprom ( OA[6]  , 0x2C ) ; ScriveEEprom ( OA[6]  , 0x3C ) ;
-    // ------------------------------------------------------ P1
+// ------------------------------------------------------ P1
     OA[2]=SOA2 ; OA[3]=SOA3 ; OA[4] = SOA4 ;        // restore    1
     OA[4] = OA[4]+2;        // +2 minuti
     if (OA[4] >9) {OA[4]=OA[4]-10; OA[3]=OA[3]+1;}  // se minuti unita >9 aumenta decine
@@ -574,7 +573,7 @@ void SetAlarmInit() {  // setta gli allarmi alla partenza per testare           
     if (OA[3] >5) {OA[3]=OA[3]-5 ; OA[2]=OA[2]+1;}  // se minuti decine >5 aumenta ore unita
 
     ScriveEEprom ( OA[2]  , 0x18 ) ;ScriveEEprom ( OA[3]  , 0x19 ) ;ScriveEEprom ( OA[4]  , 0x1A ) ;
-    // ------------------------------------------------------ P2
+// ------------------------------------------------------ P2
     OA[2]=SOA2 ; OA[3]=SOA3 ; OA[4] = SOA4 ;        // restore    1
     OA[4] = OA[4]+4;        // +4 minuti
     if (OA[4] >9) {OA[4]=OA[4]-10; OA[3]=OA[3]+1;}  // se minuti unita >9 aumenta decine
@@ -588,7 +587,7 @@ void SetAlarmInit() {  // setta gli allarmi alla partenza per testare           
     if (OA[3] >5) {OA[3]=OA[3]-5 ; OA[2]=OA[2]+1;}  // se minuti decine >5 aumenta ore unita
 
     ScriveEEprom ( OA[2]  , 0x28 ) ;ScriveEEprom ( OA[3]  , 0x29 ) ;ScriveEEprom ( OA[4]  , 0x2A ) ;
-    // ------------------------------------------------------ P3
+// ------------------------------------------------------ P3
     OA[2]=SOA2 ; OA[3]=SOA3 ; OA[4] = SOA4 ;        // restore    1
     OA[4] = OA[4]+5;        // +5 minuti
     if (OA[4] >9) {OA[4]=OA[4]-10; OA[3]=OA[3]+1;}  // se minuti unita >9 aumenta decine
@@ -603,43 +602,9 @@ void SetAlarmInit() {  // setta gli allarmi alla partenza per testare           
 
     ScriveEEprom ( OA[2]  , 0x38 ) ; ScriveEEprom ( OA[3]  , 0x39 ) ; ScriveEEprom ( OA[4]  , 0x3A ) ;
 }
+
+
 //===============================================
-//===============================================
-//===============================================
-
-void CaricaDatiPompe() {
-
-    int P1[13]={0,0,0,0,0,0,0,0,0,0,0,0,0}; //val ora start stop P1 6+6 val
-    int P2[13]={0,0,0,0,0,0,0,0,0,0,0,0,0}; //val ora start stop P2 6+6 val
-    int P3[13]={0,0,0,0,0,0,0,0,0,0,0,0,0}; //val ora start stop P3 6+6 val
-    int indice = 0;                         // puntatore
-    int i = 0;                              // generico
-    //long StartPompa1 = 0; long StopPompa1 = 0; int StatoPompa1;  // variabili pompa 1
-    //long StartPompa2 = 0; long StopPompa2 = 0; int StatoPompa2;  // variabili pompa 2
-    //long StartPompa3 = 0; long StopPompa3 = 0; int StatoPompa3;  // variabili pompa 3
-
-
-    for ( i=0x10; i <= 0x1C; i++) {  // legge la EEprom e popola gli array
-        P1[indice] = LeggeEEprom(i);          // pompa 1 stato e orario start stop
-        P2[indice] = LeggeEEprom(i + 0x10);   // pompa 2 stato e orario start stop
-        P3[indice] = LeggeEEprom(i + 0x20);   // pompa 3 stato e orario start stop
-        indice = indice + 1;    // incrementa indice di +1
-    }
-    // carico delle variabili con i dati della EEprom
-    StatoPompa1=P1[0]; StatoPompa2=P2[0]; StatoPompa3=P3[0]; // ena o disa pompe
-
-
-
-
-    //if (pompa == 1) { for (i=0; i<13; i++ ) {XX[i] = P1[i];} }
-    //if (pompa == 2) { for (i=0; i<13; i++ ) {XX[i] = P2[i];} }
-    //if (pompa == 3) { for (i=0; i<13; i++ ) {XX[i] = P3[i];} }
-
-
-
-}
-
-/*
 void VaiCheckTest(int H[]) {
 
 unsigned long secondi_tot;
@@ -679,4 +644,3 @@ Serial.print(" secondi in secondi   :");Serial.println(secondi_sec);
 }
 
 //===============================================
-*/

@@ -1,0 +1,113 @@
+//
+//
+void setup(void) {
+    Serial.begin(9600);
+}
+// ============================================================================
+
+void loop() {
+    VaiCheckTest();
+    delay(5000);
+}
+
+// ============================================================================
+void VaiCheckTest(void) {
+
+unsigned long secondi_tot;      // unsigned long fino a 4,294,967,295
+unsigned long mese_sec;
+unsigned long giorno_sec;
+unsigned long ora_sec;
+unsigned long minuti_sec;
+unsigned long secondi_sec;
+
+unsigned int a = 4;  // mese
+unsigned int b = 4;  // giorno
+unsigned int c = 16; // ora
+
+                           //      4.294.967.295
+mese_sec   = a *31*24*60*60;         // 10.713.600
+giorno_sec = b *   24*60*60;         //    345.600
+ora_sec    = c *      60*60;         //     57.600  ok
+minuti_sec =          21*60;         //      1.260  ok
+secondi_sec= 45;
+
+
+// trasformo tutto in secondi, escludo l'anno
+
+secondi_tot = mese_sec + giorno_sec + ora_sec + minuti_sec + secondi_sec ;
+
+
+Serial.println("data e ora in  AA MM GG     hh mm ss");
+Serial.println("18/04/04     16:21:45");
+
+Serial.print(" Valore convertito    :");Serial.println(secondi_tot);
+
+Serial.print(" secondi nel mese     :");Serial.println(mese_sec);
+Serial.print(" secondi nel giorno   :");Serial.println(giorno_sec);
+Serial.print(" secondi in ora       :");Serial.println(ora_sec);
+Serial.print(" secondi in minuti    :");Serial.println(minuti_sec);
+Serial.print(" secondi in secondi   :");Serial.println(secondi_sec);
+Serial.println("  - - - - - -  -- ");
+
+long mySec = 1234567899; //1.234.567.899
+// loreto1(mySec);
+loreto2(mySec);
+
+}
+
+
+
+
+void loreto1( long valore) {
+    long resto;
+
+    Serial.print(" valore:  ");Serial.println(valore);
+    while (true) {
+        if (valore > 999) {
+            resto  = valore%1000;
+            valore = valore/1000;
+            Serial.print(" resto  :  ");Serial.print(resto); Serial.print(" - valore :  ");Serial.println(valore);
+        }
+        else {
+            resto = valore;
+            valore = 0;
+            Serial.print(" resto  :  ");Serial.print(resto); Serial.print(" - valore :  ");Serial.println(valore);
+            break;
+        }
+    }
+}
+
+void loreto2( long valore) {
+    long resto;
+    int result[10];
+
+    Serial.print(" valore:  ");Serial.println(valore);
+    int index = 0;
+    while (true) {
+        index += 1;
+
+        if (valore > 999) {
+            resto  = valore%1000;
+            valore = valore/1000;
+            Serial.print(" resto  :  ");Serial.print(resto); Serial.print(" - valore :  ");Serial.println(valore);
+            result[index] = resto;
+        }
+
+        else {
+            resto = valore;
+            result[index] = resto;
+            valore = 0;
+            Serial.print(" resto  :  ");Serial.print(resto); Serial.print(" - valore :  ");Serial.println(valore);
+            break;
+        }
+    }
+
+    Serial.print(" index  :  ");Serial.println(index);
+    Serial.println();
+    Serial.print(" result  :  ");Serial.print(result[index--]);
+    Serial.print('.');Serial.print(result[index--]);
+    Serial.print('.');Serial.print(result[index--]);
+    Serial.print('.');Serial.print(result[index--]);
+    Serial.println();
+}
+

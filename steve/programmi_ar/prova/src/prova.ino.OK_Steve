@@ -1,0 +1,112 @@
+//
+//
+void setup(void) {
+    Serial.begin(9600);
+}
+// ============================================================================
+
+void loop() {
+    VaiCheckTest();
+    delay(5000);
+}
+
+// ============================================================================
+void VaiCheckTest(void) {
+
+unsigned long secondi_tot;      // unsigned long fino a 4,294,967,295
+unsigned long mese_sec;
+unsigned long giorno_sec;
+unsigned long ora_sec;
+unsigned long minuti_sec;
+unsigned long secondi_sec;
+
+unsigned int a = 4;  // mese
+unsigned int b = 4;  // giorno
+unsigned int c = 16; // ora
+                            //      4.294.967.295
+mese_sec   = a *31*24*60*60;         // 10.713.600
+giorno_sec = b *   24*60*60;         //    345.600
+ora_sec    = c *      60*60;         //     57.600  ok
+minuti_sec =          21*60;         //      1.260  ok
+secondi_sec= 45;
+
+// trasformo tutto in secondi, escludo l'anno
+
+secondi_tot = mese_sec + giorno_sec + ora_sec + minuti_sec + secondi_sec ;
+
+Serial.println("data e ora in  AA MM GG     hh mm ss");
+Serial.println("18/04/04     16:21:45");
+
+Serial.print(" Valore convertito    :");Serial.println(secondi_tot);
+
+Serial.print(" secondi nel mese     :");Serial.println(mese_sec);
+Serial.print(" secondi nel giorno   :");Serial.println(giorno_sec);
+Serial.print(" secondi in ora       :");Serial.println(ora_sec);
+Serial.print(" secondi in minuti    :");Serial.println(minuti_sec);
+Serial.print(" secondi in secondi   :");Serial.println(secondi_sec);
+Serial.println("  - - - - - -  -- ");
+
+StampaTutto(secondi_tot);
+
+}
+
+
+void StampaTutto(unsigned long valore1) {
+
+    unsigned long valore = 1234567899; //1.234.567.899
+    unsigned long resto;
+
+// unsigned long 4 byte FFFFFFFF in decimale 4.294.967.295
+
+//    a1         a2         a3         A4           unsigned int :
+//  x  x  x .  x  x  x .  x  x  x .  x  x  x        misura fino a 999 miliardi
+    unsigned long a1 = 0;    // 123 . 123
+    unsigned long a2 = 0;
+    unsigned long a3 = 0;
+    unsigned long a4 = 0;
+
+// -----------------------------------------------------------------------------------------
+// es: valore= 23.567, esegue if, se valore < 999 lo mette in a4 e non esegue altro
+    if (valore >= 999) { // controllo se il valore puo' essere esaminato per il gruppo A4
+        resto = int(valore/1000);           // es valore 1.234.567.899 -> resto= 1.234.567, in resto il valore decimato
+        a4 = valore-(resto*1000);           //    ac= 1.234.567.899 - 1.234.567.000 -> 899
+        valore = resto;                     // rimetto a posto il valore decimato
+        Serial.print(" resto :");Serial.println(resto);
+        Serial.print(" a4 :");Serial.println(a4);
+    }
+    else {a4 = valore;}
+// -----------------------------------------------------------------------------------------
+    if (valore >= 999) { // controllo se il valore puo' essere esaminato per il gruppo A3
+        resto = int(valore/1000);
+        a3 = valore-(resto*1000);
+        valore = resto;
+        Serial.print(" resto :");Serial.println(resto);
+        Serial.print(" a3 :");Serial.println(a3);
+    }
+    else {a3 = valore;}
+// -----------------------------------------------------------------------------------------
+    if (valore >= 999) { // controllo se il valore puo' essere esaminato per il gruppo A32
+        resto = int(valore/1000);
+        a2 = valore-(resto*1000);
+        valore = resto;
+        Serial.print(" resto :");Serial.println(resto);
+        Serial.print(" a2 :");Serial.println(a2);
+    }
+    else {a2 = valore;}
+// -----------------------------------------------------------------------------------------
+    if (valore >= 999) { // controllo se il valore puo' essere esaminato per il gruppo A32
+        resto = int(valore/1000);
+        a1 = valore-(resto*1000);
+        valore = resto;
+        Serial.print(" resto :");Serial.println(resto);
+        Serial.print(" a1 :");Serial.println(a1);
+    }
+    else {a1 = valore;}
+// -----------------------------------------------------------------------------------------
+// se il numero e' di una cifra o di due, il sisulato della visualizzazione potrebbe esserenon corretto.
+// Per esempio se ho il valore 234001045 otterro' 234.1.45 !!!!
+    Serial.print("valore risultante: ");Serial.print(a1);Serial.print(".");Serial.print(a2);Serial.print(".");
+    Serial.print(a3);Serial.print(".");Serial.println(a4);Serial.println("");
+    Serial.println("");Serial.println("");Serial.println("");
+// ============================================================================
+}
