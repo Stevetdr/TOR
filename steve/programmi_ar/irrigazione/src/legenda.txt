@@ -1,11 +1,11 @@
+irrigazione.ino         sempre versione ultima salvata e senza errori di compilazione
 
 
 
 
 
-
-
-irrigazione.ino         prova di compattamento routine cambio data e ora-ok 21/03/2018
+irrigazione.ino.15ok    versione ok, si inizia dopo la gestione delle pompe
+irrigazione.ino.13ok    prova di compattamento routine cambio data e ora-ok 21/03/2018
 irrigazione.ino.12ok    ok anche il cambio ora start e stop pompe del 27/03/2018
 irrigazione.ino.9ok     a posto dopo le prove stese alla GMM IL 21/03/2018
 irrigazione.ino.8ok     file ok inviato in gmm e rivoluzionato il 20/03/2018

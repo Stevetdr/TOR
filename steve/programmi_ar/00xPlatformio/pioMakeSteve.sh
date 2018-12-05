@@ -1,9 +1,11 @@
 #!/bin/bash
 action=$1
+device=$2
+environment=$3
+
 VERBOSE=-v
 VERBOSE=
 # device=/dev/ttyUSB0
-device=$2
 # -------------------------------------------------------------------------
 function creaLink() {
     ln -s /home/pi/485d_Loreto/Arduino/LnLibraries/LnFunctions      /home/pi/485d_Loreto/Arduino/rs485-Full/lib/LnFunctions
@@ -25,11 +27,15 @@ if [[ "$action" == "" ]]; then
     echo "      u -> upload"
     echo "      s -> read serial"
     echo ""
-    echo "esempio:   bash pioMakeSteve.sh cbu 0"
-    echo " esegue clear build upload su  /dev/ttyUSB0"
+    echo "esempio:   pio cbu 0"
+    echo " esegue [pioMakeSteve.sh] clear build upload su  /dev/ttyUSB0"
     exit
 fi
-
+# -------------------------------------------------------------------------
+if [[ "$environment" == "" ]]; then             # aggiunto
+    environment='nano'
+    exit
+fi
 #echo $action
 dev="/dev/ttyUSB"$device
 #echo "$dev"
@@ -50,7 +56,7 @@ if [[ "$action" =~ "b" ]]; then
     echo "BUILD"
     echo "------"
     echo
-    platformio run  --environment nano
+    platformio run  --environment $environment      # aggiunto $environment al posto di nano
 fi
 
 #upload ------------------------------------------------------------------------

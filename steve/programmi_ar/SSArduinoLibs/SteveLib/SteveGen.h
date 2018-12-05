@@ -198,8 +198,8 @@ dayOfMonth, byte month, byte year) {
     Wire.endTransmission();
 }
 //-----------------------------------------------------------------------------
-//---------- per correzione tempo su orologio in un solo campo ----------------
 void timeSS(int DS3231_indirizzo) {
+    //---------- per correzione tempo su orologio in un solo campo ----------------
     Wire.beginTransmission(DS3231_indirizzo);
     Wire.write(06); // set  l'indirizzo in cui cambiare il
     Wire.write(18); // set   valore di questa Wire
@@ -311,7 +311,7 @@ String DaHEXaBin(int valore, int nr_bit) {
 }
 //-----------------------------------------------------------------------------
 void ResetEEprom(void) {    // resetta a 0 tutta la memoria del nano
-    // d
+    //
     for (int i = 0; i <= 0x800; i++) {ScriveEEprom(0x00,i);}
 }
 //-----------------------------------------------------------------------------
@@ -350,7 +350,7 @@ void stampaGradi(float gradiC, int col, int linea) {
     WriteString(charVal, col, linea);     // solo questo OK
     //WriteString(charVal, 1, 1);     // questa e' la vecchia istruzione che funzionava, da togliere
 }       // esce da stampaGradi
-//-----------------------------------------------------------------------------
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 long getDecimali(float val) {
     // questa funzione estrae la parte decimale del float dei gradi
     int intPart = int(val);     // prende la parte intera es. di 317,23 ottiene 317
@@ -359,4 +359,52 @@ long getDecimali(float val) {
     else if(decPart < 0) { return((-1)*decPart);} // se negativo, moltiplica per -1
     else { return(0);}                  //return 0 se non c'e' parte decimale
 }       // esce da getDecimali vedi stampaGradi per utilizzo
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+void WriteExtEEprom( int deviceaddress, unsigned int eeaddress, byte data ) {
+    // indirizzo i2c della eeprom, indirizzo su cui scrivere, dato
+    int rdata = data;
+    Wire.beginTransmission(deviceaddress);
+    Wire.write((int)(eeaddress >> 8));      // MSB
+    Wire.write((int)(eeaddress & 0xFF));    // LSB
+    Wire.write(rdata);
+    Wire.endTransmission();
+}
+//------------------------------------------------------------------------------
+byte ReadExtEeprom( int deviceaddress, unsigned int eeaddress ) {
+    // indirizzo i2c della eeprom, indirizzo da cui leggere
+    byte rdata = 0xFF;
+    Wire.beginTransmission(deviceaddress);
+    Wire.write((int)(eeaddress >> 8)); // MSB
+    Wire.write((int)(eeaddress & 0xFF)); // LSB
+    Wire.endTransmission();
+    Wire.requestFrom(deviceaddress,1);
+    if (Wire.available()) rdata = Wire.read();
+    return rdata;
+}
+//------------------------------------------------------------------------------
+// Le funzioni sotto servono per leggere piu' byte (max 30) dalla memoria
+// Sono da studiare e per ora le riporto ma non le uso
+// WARNING: address is a page address, 6-bit end will wrap around
+// also, data can be maximum of about 30 bytes, because the Wire library has a buffer of 32 bytes
+void i2c_eeprom_write_page( int deviceaddress, unsigned int eeaddresspage, byte* data, byte length ) {
+    Wire.beginTransmission(deviceaddress);
+    Wire.write((int)(eeaddresspage >> 8)); // MSB
+    Wire.write((int)(eeaddresspage & 0xFF)); // LSB
+    byte c;
+    for ( c = 0; c < length; c++)
+        Wire.write(data[c]);
+    Wire.endTransmission();
+}
+//------------------------------------------------------------------------------
+// maybe let's not read more than 30 or 32 bytes at a time!
+void i2c_eeprom_read_buffer( int deviceaddress, unsigned int eeaddress, byte *buffer, int length ) {
+    Wire.beginTransmission(deviceaddress);
+    Wire.write((int)(eeaddress >> 8)); // MSB
+    Wire.write((int)(eeaddress & 0xFF)); // LSB
+    Wire.endTransmission();
+    Wire.requestFrom(deviceaddress,length);
+    int c = 0;
+    for ( c = 0; c < length; c++ )
+        if (Wire.available()) buffer[c] = Wire.read();
+}
+//------------------------------------------------------------------------------

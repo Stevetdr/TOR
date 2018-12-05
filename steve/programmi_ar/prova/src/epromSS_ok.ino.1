@@ -1,0 +1,99 @@
+// programma di SS
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "PCF8574.h"        // gestione IO per LCD
+#include "DS3232RTC.h"      // gestione clock e termometro
+#include <EEPROM.h>         // gestione EEPROM
+#include "SteveGen.h"       // librerie costruite da Stefano 07 03 18
+//
+#define AT24C32_EEPROM_I2C_ADDRESS  0x57  // i2c 0x57 del AT24C32 EEprom su scheda DS3231
+#define DS3231_indirizzo            0x68  // i2c 0x68 del DS3231
+
+#define DS3231_TEMPERATURE_registro 0x11  // indirizzo del registro temperatura
+
+const int val = 36;
+int data;   // byte
+int valore = 1;
+
+//
+void setup(void) {
+    Wire.begin();
+    Serial.begin(9600);
+    delay(500);
+}
+// ============================================================================
+void loop() {
+    //Tutto();
+    Solo();
+    delay(1000);
+}
+
+void Solo() {
+    //scrive
+    Wire.beginTransmission(AT24C32_EEPROM_I2C_ADDRESS);
+    Wire.write(0x00);               // indirizzo, primi 8 bit MSB
+    Wire.write(0x03);               // indirizzo, secondi 8 bit LSB
+    Wire.write(valore);
+    Wire.endTransmission();
+    Serial.write("scrive :");Serial.print(valore);Serial.println(" ");
+    delay(10);
+
+    //legge
+    Wire.beginTransmission(AT24C32_EEPROM_I2C_ADDRESS);
+    Wire.write(0x00);
+    Wire.write(0x03);
+    Wire.endTransmission();
+    delay(10);
+
+    Wire.requestFrom(AT24C32_EEPROM_I2C_ADDRESS, 1);    // richiede 1 byte?
+    delay(10);
+
+    data = Wire.read();     // lettura del byte
+    Serial.print("Legge  : ");Serial.print(data);Serial.println(" ");
+
+    delay(10);
+    Serial.println("----------------------------");
+    valore++;
+}
+
+
+void Tutto() {
+    //WRITE!!!!*******************************
+    Serial.println("Writing to EEPROM:");
+    Wire.beginTransmission(AT24C32_EEPROM_I2C_ADDRESS);
+    Wire.write(0x00);
+    Wire.write(0x00);
+
+    for(byte i=0; i<val; i++) {     //Write 26 data bytes
+        Wire.write(i+65);
+        Serial.write(i+65);Serial.print("_");
+    }
+
+    delay(10);
+    Serial.println();
+
+    Wire.endTransmission();
+    delay(10);
+
+    //READ!!!!*********************************
+    Serial.println("Reading from EEPROM:");
+    Wire.beginTransmission(AT24C32_EEPROM_I2C_ADDRESS);
+    Wire.write(0x00);
+    Wire.write(0x00);
+    Wire.endTransmission();
+    delay(10);
+
+    Wire.requestFrom(AT24C32_EEPROM_I2C_ADDRESS, val);
+    delay(10);
+
+    for(byte i=0; i<val; i++) {     //Read 26 data bytes
+        data = Wire.read();
+        Serial.write(data);Serial.print("_");
+    }
+    Serial.println();
+
+
+}
