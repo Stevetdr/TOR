@@ -26,7 +26,7 @@ git config --global color.status auto
 echo " "
 echo " Salvataggio dati di GIT-REPO da pi3 al repository GIT-REPO-p3 su remoto"
 echo " "
-echo " "
+echo "------------------------------------------------------- start"
 
 echo " ===> Situazione parametri globali: ----------------------- 1"
 #git config -l
@@ -49,7 +49,7 @@ echo " ===> Effettuo spostamenti su repo remoto ------git push -- 6"
 echo " "
 #git remote add origin git@github.com:Stevetdr/GIT-REPO-p3
 git push -u origin master          # effettuo spostamenti file modificati
-echo "------------------------------------------------------------"
+echo "--------------------------------------------------------- end"
 
 # da esaminare:
 # git init    # prima volta da directory da salvare

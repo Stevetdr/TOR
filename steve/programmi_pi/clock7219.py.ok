@@ -1,16 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Uso CRONTAB -e per editare ed eseguire il programma
 
 import RPi.GPIO as GPIO         # access to GPIO must be through root
 import time
 import sys
 import datetime
-#from sht_sensor import Sht
-
-from sht_sensor import Sht
-
-sht = Sht(21, 17)       # sensore della Sensitron SHT75
 
 LATCH = 11          # CS      GP11   pin 23
 CLK = 12            # CLOCK   GP12   pin 32
@@ -95,22 +89,11 @@ def giorni():
     writeMAX7219(0x02,AnnoD)   # (data, position)
     writeMAX7219(0x01,AnnoU)
 #-------------------------------------------------------------------------------
-def temperatura():      # manda sul video la temperatura del sensore
-    writeMAX7219(0x08,0x0F)     # primo carattere a sinistra
-    writeMAX7219(0x07,0x0E)
-    writeMAX7219(0x06,0x0F)
-    writeMAX7219(0x05,0x0F)
-    writeMAX7219(0x04,Intero_alto)
-    writeMAX7219(0x03,Intero_basso + 0x80)         #punto decimale 1xxx xxxx in basso a destra
-    writeMAX7219(0x02,Decimale_alto)
-    writeMAX7219(0x01,Decimale_basso)       # ultimo carattere a destra
-#-------------------------------------------------------------------------------
-
 #inizio esecuzione <<<<<<<<<<<<<<<<<--------------------------------------
 initMAX7219()
 
-#===============================================================================
 # A questo punto viene stampata l'ora e la data dopo l'esame del tempo
+#
 tempo = datetime.datetime.now()
 OraD = int(tempo.hour / 10)
 OraU = tempo.hour - (OraD * 10)
@@ -146,32 +129,8 @@ for x in range(15,0,-1):
     writeMAX7219(0x0A,x)                # scende la luminosita'
     giorni()
     time.sleep(0.10)
-#
-time.sleep(1)                               #attesa di un secondo
-#===============================================================================
-# legge il sensore SHT75 e scrive sul display ----------------------------------
-Temperature = sht.read_t()
 
-Interi = int(Temperature)
-Intero_alto = int(Interi/10)
-Intero_basso = Interi-(Intero_alto * 10)
-Decimali = int((Temperature - Interi) * 100)
-Decimale_alto = int(Decimali/10)
-Decimale_basso = Decimali-(Decimale_alto * 10)
-
-#Humidity    = sht.read_rh()
-#dew_point = sht.read_dew_point(Temperature, Humidity)
-for x in range(0,15):
-    writeMAX7219(0x0A,x)                # sale la luminosita'
-    temperatura()
-    time.sleep(0.10)
-for x in range(15,0,-1):
-    writeMAX7219(0x0A,x)                # scende la luminosita'
-    temperatura()
-    time.sleep(0.10)
-
-#===============================================================================
-time.sleep(1)
+#sys.exit()
 
 displayOff()        # da usare solo in uscita x shutdown
 print ("Good by!")

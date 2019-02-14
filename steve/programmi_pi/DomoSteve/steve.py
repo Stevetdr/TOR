@@ -2,10 +2,10 @@
 
 import RPi.GPIO as GPIO
 import os
-from threading import Thread   		# permette il lancio di programmi in parallelo
+from threading import Thread   # permette il lancio di programmi in parallelo
 import datetime
 #import time
-from time import sleep # Import the sleep function from the time module
+from time import sleep # Import only the sleep function from the time module
 #------------------------------------------------------------
 
 i = datetime.datetime.now()
